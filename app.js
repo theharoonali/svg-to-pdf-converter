@@ -5,7 +5,6 @@ const merge = require('easy-pdf-merge');
 const fs = require("fs");
 const path = require("path");
 
-
 const app = express();
 const port = 3000;
 
@@ -14,7 +13,6 @@ app.use(bodyParser.json({limit: "50mb"}));
 app.use(bodyParser.urlencoded({limit: "50mb", extended: true, parameterLimit:50000}));
 
 app.use(express.static(path.join(__dirname, "public")));
-
 
 const mergePDFs = async (pdfFilePaths, outputFilePath) => {
   return new Promise((resolve, reject) => {
@@ -27,7 +25,6 @@ const mergePDFs = async (pdfFilePaths, outputFilePath) => {
     });
   });
 };
-
 
 app.post("/convert", async (req, res) => {
   try {
@@ -74,18 +71,26 @@ app.post("/convert", async (req, res) => {
 
     await browser.close();
 
-    const mergedPDFPath = "output.pdf";
+    let mergedPDFPath;
 
-    await mergePDFs(pdfFiles, mergedPDFPath);
+    // Check if the number of pages is greater than 2
+    if (pdfFiles.length >= 2) {
+      mergedPDFPath = "output.pdf";
 
-    // Cleanup individual PDF files
-    pdfFiles.forEach((pdfFilePath) => {
-      fs.unlink(pdfFilePath, (err) => {
-        if (err) {
-          console.error(err);
-        }
+      await mergePDFs(pdfFiles, mergedPDFPath);
+
+      // Cleanup individual PDF files
+      pdfFiles.forEach((pdfFilePath) => {
+        fs.unlink(pdfFilePath, (err) => {
+          if (err) {
+            console.error(err);
+          }
+        });
       });
-    });
+    } else {
+      // If there are less than or equal to 2 pages, use the first PDF directly
+      mergedPDFPath = pdfFiles[0];
+    }
 
     res.setHeader("Content-Disposition", `attachment; filename=${mergedPDFPath}`);
     res.setHeader("Content-Type", "application/pdf");
@@ -96,18 +101,21 @@ app.post("/convert", async (req, res) => {
         res.status(500).send("An error occurred while downloading the PDF file.");
       }
 
-      // Delete the generated merged PDF file after sending
-      fs.unlink(mergedPDFPath, (err) => {
-        if (err) {
-          console.error(err);
-        }
-      });
+      // Delete the generated merged PDF file after sending (if it exists)
+      if (pdfFiles.length >= 2) {
+        fs.unlink(mergedPDFPath, (err) => {
+          if (err) {
+            console.error(err);
+          }
+        });
+      }
     });
   } catch (err) {
     console.error(err);
     res.status(500).send("An error occurred while converting the SVGs to PDF.");
   }
 });
+
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });

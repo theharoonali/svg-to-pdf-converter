@@ -1,7 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const puppeteer = require("puppeteer");
-const merge = require('easy-pdf-merge');
+const merge = require("easy-pdf-merge");
 const fs = require("fs");
 const path = require("path");
 
@@ -9,8 +9,14 @@ const app = express();
 const port = 3000;
 
 // Parse request bodies
-app.use(bodyParser.json({limit: "50mb"}));
-app.use(bodyParser.urlencoded({limit: "50mb", extended: true, parameterLimit:50000}));
+app.use(bodyParser.json({ limit: "50mb" }));
+app.use(
+  bodyParser.urlencoded({
+    limit: "50mb",
+    extended: true,
+    parameterLimit: 50000,
+  })
+);
 
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -33,10 +39,10 @@ app.post("/convert", async (req, res) => {
     function extractSvgSize(svgCode) {
       const widthMatch = svgCode.match(/width="([^"]*)"/);
       const heightMatch = svgCode.match(/height="([^"]*)"/);
-    
+
       const width = widthMatch ? widthMatch[1] : null;
       const height = heightMatch ? heightMatch[1] : null;
-    
+
       return { width, height };
     }
 
@@ -44,6 +50,11 @@ app.post("/convert", async (req, res) => {
 
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
+    const cssb = [];
+    cssb.push("<style>");
+    cssb.push("body {margin:0px;}");
+    cssb.push("</style>");
+    const css = cssb.join("");
 
     for (let i = 0; i < svgCodes.length; i++) {
       const svgCode = svgCodes[i];
@@ -53,7 +64,9 @@ app.post("/convert", async (req, res) => {
 
         const pdfFilePath = `output_${i}.pdf`;
 
-        await page.setContent(`<div>${svgCode}</div>`, { waitUntil: "networkidle0" });
+        await page.setContent(`${css}<div>${svgCode}</div>`, {
+          waitUntil: "networkidle0",
+        });
 
         await page.pdf({
           path: pdfFilePath,
@@ -65,7 +78,7 @@ app.post("/convert", async (req, res) => {
         pdfFiles.push(pdfFilePath);
 
         // Clear the page content after generating the PDF for this SVG
-        await page.setContent('');
+        await page.setContent("");
       }
     }
 
@@ -92,13 +105,18 @@ app.post("/convert", async (req, res) => {
       mergedPDFPath = pdfFiles[0];
     }
 
-    res.setHeader("Content-Disposition", `attachment; filename=${mergedPDFPath}`);
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${mergedPDFPath}`
+    );
     res.setHeader("Content-Type", "application/pdf");
 
     res.download(mergedPDFPath, (err) => {
       if (err) {
         console.error(err);
-        res.status(500).send("An error occurred while downloading the PDF file.");
+        res
+          .status(500)
+          .send("An error occurred while downloading the PDF file.");
       }
 
       // Delete the generated merged PDF file after sending (if it exists)

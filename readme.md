@@ -1,6 +1,6 @@
 # Installation
 ```bash
-1. git clone https://github.com/mudassirali007/SvgToPdf.git
+1. git clone https://github.com/theharoonali/SvgToPdf.git
 ```
 2. goto Project Folder. By default folder name is SvgToPdf
 
